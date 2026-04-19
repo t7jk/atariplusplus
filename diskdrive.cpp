@@ -1159,6 +1159,21 @@ void DiskDrive::InsertDisk(bool protect)
 }
 ///
 
+/// DiskDrive::MountImage
+// Eject current disk, set new image path, and insert it unprotected.
+void DiskDrive::MountImage(const char *path)
+{
+  EjectDisk();
+  delete[] ImageToLoad;
+  ImageToLoad = NULL;
+  if (path && *path) {
+    ImageToLoad = new char[strlen(path) + 1];
+    strcpy(ImageToLoad,path);
+    InsertDisk(false);
+  }
+}
+///
+
 /// DiskDrive::ParseArgs
 // Argument parser stuff: Parse off command line args
 void DiskDrive::ParseArgs(class ArgParser *args)

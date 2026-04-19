@@ -217,6 +217,9 @@ public:
   // have one.
   void InsertDisk(bool protect);
   //
+  // Eject any current disk, set a new image path, and insert it unprotected.
+  void MountImage(const char *path);
+  //
   // Argument parser stuff: Parse off command line args
   virtual void ParseArgs(class ArgParser *args);
   //
