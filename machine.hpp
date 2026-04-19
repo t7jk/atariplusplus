@@ -78,6 +78,7 @@ class ErrorRequester;
 class AtariSIOPort;
 class TitleMenu;
 class KeyboardStick;
+class DiskDrive;
 ///
 
 /// Class Machine
@@ -91,6 +92,8 @@ class Machine {
   List<Configurable>    configChain;
   // Chain of all chips
   List<Chip>            chipChain;
+  // Direct references to the four disk drives for fast access.
+  class DiskDrive      *DriveChain[4];
   // Chain of all VBI activities
   List<VBIAction>       vbiChain;
   // Chain of all HBI activities
@@ -573,6 +576,13 @@ public:
   //
   // Return true in case this is an NTSC machine.
   bool isNTSC(void) const;
+  //
+  // Return drive by zero-based index (0 = D1:). Returns NULL if out of range.
+  class DiskDrive *DriveOf(int id) const
+  {
+    if (id < 0 || id > 3) return NULL;
+    return DriveChain[id];
+  }
 };
 ///
 

@@ -148,6 +148,7 @@ Machine::Machine(void)
   nogfx          = true;
   noerrors       = false;
   nowarnings     = false;
+  DriveChain[0] = DriveChain[1] = DriveChain[2] = DriveChain[3] = NULL;
 
   for(i=0;i<4;i++) {
     joysticks[i] = NULL;
@@ -262,10 +263,10 @@ void Machine::BuildMachine(class ArgParser *args)
   // Attach serial devices to SIO. The ownership then
   // goes over to the SIO module.
   sio->RegisterDevice(printer = new class Printer(this)); // keep the printer for P: emulation
-  sio->RegisterDevice(new class DiskDrive(this,"Drive.1",0));
-  sio->RegisterDevice(new class DiskDrive(this,"Drive.2",1));
-  sio->RegisterDevice(new class DiskDrive(this,"Drive.3",2));
-  sio->RegisterDevice(new class DiskDrive(this,"Drive.4",3));
+  sio->RegisterDevice(DriveChain[0] = new class DiskDrive(this,"Drive.1",0));
+  sio->RegisterDevice(DriveChain[1] = new class DiskDrive(this,"Drive.2",1));
+  sio->RegisterDevice(DriveChain[2] = new class DiskDrive(this,"Drive.3",2));
+  sio->RegisterDevice(DriveChain[3] = new class DiskDrive(this,"Drive.4",3));
   sio->RegisterDevice(serial = new class InterfaceBox(this));
   sio->RegisterDevice(new class AtariSIO(this,"AtariSIO.1",0));
   sio->RegisterDevice(new class AtariSIO(this,"AtariSIO.2",1));
