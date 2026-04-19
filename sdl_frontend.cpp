@@ -175,12 +175,12 @@ void SDL_FrontEnd::CreateDisplay(void)
   if (AutoScale) {
     const SDL_VideoInfo *vinfo = SDL_GetVideoInfo();
     if (vinfo && vinfo->current_w > 0 && vinfo->current_h > 0) {
-      PixelWidth  = (LONG)vinfo->current_w / Antic::WindowWidth;
-      PixelHeight = (LONG)vinfo->current_h / Antic::WindowHeight;
+      PixelWidth  = (LONG)vinfo->current_w / Width;
+      PixelHeight = (LONG)vinfo->current_h / Height;
       if (PixelWidth  < 1) PixelWidth  = 1;
       if (PixelHeight < 1) PixelHeight = 1;
+      FullScreen = true;
     }
-    FullScreen = true;
   }
   truecolor       = machine->GTIA()->SuggestTrueColor();
 
@@ -1564,6 +1564,7 @@ void SDL_FrontEnd::ParseArgs(class ArgParser *args)
   bool fullscreen   = FullScreen;
   bool doublebuffer = DoubleBuffer;
   bool deblocking   = Deblocking;
+  bool autoscale    = AutoScale;
   static const struct ArgParser::SelectionVector Formats[] = {
     {"PNM", ScreenDump::PNM},
     {"BMP", ScreenDump::BMP},
@@ -1604,7 +1605,8 @@ void SDL_FrontEnd::ParseArgs(class ArgParser *args)
       Height       != h            ||
       Deblocking   != deblocking   ||
       FullScreen   != fullscreen   ||
-      DoubleBuffer != doublebuffer ||      
+      DoubleBuffer != doublebuffer ||
+      AutoScale    != autoscale    ||
       truecolor    != machine->GTIA()->SuggestTrueColor() ||
       (colormap && (colormap != machine->GTIA()->ActiveColorMap()))
       ) {    
