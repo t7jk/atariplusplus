@@ -55,7 +55,7 @@ FILES		=	new list adrspace debugadrspace monitor instruction serialdevice \
 			optioncollector menuoption menutopic \
 			menu renderport bufferport \
 			requester warningrequester errorrequester \
-			choicerequester filerequester \
+			choicerequester filerequester atarionline \
 			saveable snapshot snapshotwriter snapshotreader \
 			event gadget gadgetgroup verticalgroup \
 			buttongadget booleangadget slidergadget stringgadget \
