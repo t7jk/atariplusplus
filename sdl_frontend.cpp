@@ -63,7 +63,7 @@ SDL_FrontEnd::SDL_FrontEnd(class Machine *mach,int unit)
     LeftEdge(unit?0:16), TopEdge(0), 
     Width(unit?80*8:Antic::WindowWidth), Height(unit?25*8:Antic::WindowHeight),
     PixelWidth(unit?1:2), PixelHeight(2), ShieldCursor(false), 
-    FullScreen(true), DoubleBuffer(false), Deblocking(false),
+    FullScreen(true), DoubleBuffer(false), Deblocking(false), AutoScale(false),
     Doubler(new UWORD[256]), Quadrupler(new ULONG[256]), Deblocker(NULL)
 {
   int i;
@@ -170,6 +170,18 @@ void SDL_FrontEnd::CreateDisplay(void)
   //
   // Must now shut down SDL on the destructor
   //sdl_initialized = true;
+  //
+  // If AutoScale is set, compute PixelWidth/PixelHeight from desktop resolution.
+  if (AutoScale) {
+    const SDL_VideoInfo *vinfo = SDL_GetVideoInfo();
+    if (vinfo && vinfo->current_w > 0 && vinfo->current_h > 0) {
+      PixelWidth  = (LONG)vinfo->current_w / Antic::WindowWidth;
+      PixelHeight = (LONG)vinfo->current_h / Antic::WindowHeight;
+      if (PixelWidth  < 1) PixelWidth  = 1;
+      if (PixelHeight < 1) PixelHeight = 1;
+    }
+    FullScreen = true;
+  }
   truecolor       = machine->GTIA()->SuggestTrueColor();
 
   if (truecolor) {
@@ -1580,6 +1592,7 @@ void SDL_FrontEnd::ParseArgs(class ArgParser *args)
   args->DefineBool("DoubleBuffer","enable double buffering",DoubleBuffer);
   args->DefineBool("ShieldCursor","bug workaround to shield cursor from overdrawing",ShieldCursor);
   args->DefineBool("DeBlocker","enable improved magnification routines",Deblocking);
+  args->DefineBool("AutoScale","auto-scale pixel size to fill the screen",AutoScale);
 
   Format = (ScreenDump::GfxFormat)format;
     

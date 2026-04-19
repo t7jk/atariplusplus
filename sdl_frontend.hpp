@@ -190,6 +190,9 @@ class SDL_FrontEnd : public AtariDisplay, public SDLClient {
   // Set this to get a deblocking filter.
   bool            Deblocking;
   //
+  // Set this to auto-scale pixel size to fill the screen.
+  bool            AutoScale;
+  //
   // Helper arrays for faster screen-build up
   UWORD          *Doubler;
   ULONG          *Quadrupler;
