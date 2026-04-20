@@ -50,8 +50,24 @@ void AtariOnlineRequester::ClearItems(void)
   }
 }
 
-void AtariOnlineRequester::BuildGadgets(List<Gadget> &, class RenderPort *)
-{}
+void AtariOnlineRequester::BuildGadgets(List<Gadget> &glist, class RenderPort *rport)
+{
+  LONG w = rport->WidthOf();
+  LONG h = rport->HeightOf();
+
+  // Title text at top (12 px)
+  new class TextGadget(glist, rport, 0, 0, w, 12, "AtariOnline - Kaz Catalog");
+
+  // Scrollable list area: full width, between title and cancel button
+  ClipRegion = new class RenderPort(rport, 0, 12, w, h - 24);
+  Directory  = new class VerticalGroup(glist, ClipRegion, 0, 0, w, h - 24);
+
+  // Cancel button at bottom
+  CancelButton = new class ButtonGadget(glist, rport, 0, h - 12, 76, 12, "Cancel");
+
+  // Fill list from current Items
+  PopulateDirectoryGadgets((int)w);
+}
 
 void AtariOnlineRequester::CleanupGadgets(void)
 {
@@ -61,14 +77,107 @@ void AtariOnlineRequester::CleanupGadgets(void)
   CancelButton = NULL;
 }
 
-int AtariOnlineRequester::HandleEvent(struct Event &)
+int AtariOnlineRequester::HandleEvent(struct Event &event)
 {
-  return RQ_Abort;
+  if (event.Type != Event::GadgetUp || !event.Object)
+    return RQ_Nothing;
+
+  // Cancel button
+  if (event.Object == CancelButton)
+    return RQ_Abort;
+
+  class RequesterEntry *entry = (class RequesterEntry *)event.Object;
+  const char *label = entry->GetStatus();
+  if (!label) return RQ_Nothing;
+
+  // Back navigation
+  if (strcmp(label, "<< Back") == 0) {
+    if (NavLevel == 2) {
+      delete[] CurrentTitle;
+      CurrentTitle = NULL;
+      NavLevel = 1;
+    } else if (NavLevel == 1) {
+      delete[] CurrentSub;
+      CurrentSub = NULL;
+      NavLevel = 0;
+    }
+    return int(AOR_Navigate);
+  }
+
+  // Find matching NavItem by display name
+  NavItem *found = NULL;
+  for (NavItem *it = Items.First(); it; it = it->NextOf()) {
+    if (strcmp(it->DisplayName, label) == 0) { found = it; break; }
+  }
+  if (!found) return RQ_Nothing;
+
+  if (found->ItemType == NavItem::ENTRY) {
+    if (NavLevel == 0) {
+      delete[] CurrentSub;
+      int len = (int)strlen(found->UrlParam);
+      CurrentSub = new char[len + 1];
+      strcpy(CurrentSub, found->UrlParam);
+      NavLevel = 1;
+    } else if (NavLevel == 1) {
+      delete[] CurrentTitle;
+      int len = (int)strlen(found->UrlParam);
+      CurrentTitle = new char[len + 1];
+      strcpy(CurrentTitle, found->UrlParam);
+      NavLevel = 2;
+    }
+    return int(AOR_Navigate);
+  }
+
+  if (found->ItemType == NavItem::FILE) {
+    if (DownloadFile(found->UrlParam))
+      return int(AOR_Download);
+    // Download failed — keep requester open so user can retry/cancel
+  }
+  return RQ_Nothing;
 }
 
 int AtariOnlineRequester::Request(void)
 {
-  return 0;
+  NavLevel = 0;
+  delete[] CurrentSub;   CurrentSub   = NULL;
+  delete[] CurrentTitle; CurrentTitle = NULL;
+  delete[] SelectedFile; SelectedFile = NULL;
+
+  if (!EnsureDownloadDir()) {
+    MachineOf()->PutWarning(
+      "AtariOnline: Cannot create ~/.atari++/downloads/ — check HOME environment variable");
+    return 0;
+  }
+
+  for (;;) {
+    ClearItems();
+
+    char url[512];
+    BuildUrl(url, sizeof(url));
+
+    char *html = FetchHtml(url);
+    if (!html) {
+      MachineOf()->PutWarning("AtariOnline: Could not fetch page — check network connection");
+      return 0;
+    }
+
+    bool parsed = false;
+    if      (NavLevel == 0) parsed = ParseLevel0(html);
+    else if (NavLevel == 1) parsed = ParseLevel1(html);
+    else                    parsed = ParseLevel2(html);
+    delete[] html;
+
+    if (!parsed) {
+      MachineOf()->PutWarning("AtariOnline: No entries found on this page");
+      return 0;
+    }
+
+    int result = Requester::Request();
+
+    if (result == int(AOR_Navigate)) continue;
+    if (result == int(AOR_Download)) return 1;
+    return 0;  // RQ_Abort: user cancelled
+  }
 }
 
 void AtariOnlineRequester::BuildUrl(char *buf, int bufsize) const
@@ -274,7 +383,34 @@ bool AtariOnlineRequester::EnsureDownloadDir(void)
   }
   return true;
 }
-bool AtariOnlineRequester::DownloadFile(const char *) { return false; }
+bool AtariOnlineRequester::DownloadFile(const char *fileParam)
+{
+  char decoded[256];
+  UrlDecode(decoded, fileParam, sizeof(decoded));
+  SanitizeFilename(decoded);
+
+  char localpath[768];
+  snprintf(localpath, sizeof(localpath), "%s/%s", DownloadDir, decoded);
+
+  char url[1024];
+  snprintf(url, sizeof(url),
+    "https://atarionline.pl/v01/kazip.php?ct=kazip&sub=%s&title=%s&file=%s",
+    CurrentSub, CurrentTitle, fileParam);
+
+  char cmd[2048];
+  snprintf(cmd, sizeof(cmd),
+    "curl -L --max-time 60 -o '%s' '%s'", localpath, url);
+
+  if (system(cmd) != 0) return false;
+
+  struct stat st;
+  if (stat(localpath, &st) != 0 || st.st_size == 0) return false;
+
+  delete[] SelectedFile;
+  SelectedFile = new char[strlen(localpath) + 1];
+  strcpy(SelectedFile, localpath);
+  return true;
+}
 void AtariOnlineRequester::UrlDecode(char *dst, const char *src, int dstsize)
 {
   int di = 0;
@@ -298,4 +434,29 @@ void AtariOnlineRequester::SanitizeFilename(char *name)
       *c = '_';
   }
 }
-void AtariOnlineRequester::PopulateDirectoryGadgets(int) {}
+void AtariOnlineRequester::PopulateDirectoryGadgets(int w)
+{
+  static const LONG ITEM_H = 8;
+  LONG te    = 0;
+  LONG clipH = ClipRegion->HeightOf();
+
+  // "Back" entry at all levels except level 0
+  if (NavLevel > 0) {
+    new class RequesterEntry(*Directory, ClipRegion, 0, te, w, ITEM_H, "<< Back", false);
+    te += ITEM_H;
+  }
+
+  // Navigation / file entries
+  for (NavItem *it = Items.First(); it; it = it->NextOf()) {
+    bool isdir = (it->ItemType == NavItem::ENTRY);
+    new class RequesterEntry(*Directory, ClipRegion, 0, te, w, ITEM_H,
+                             it->DisplayName, isdir);
+    te += ITEM_H;
+  }
+
+  // Blank filler to fill remaining visible area
+  while (te + ITEM_H <= clipH) {
+    new class RequesterEntry(*Directory, ClipRegion, 0, te, w, ITEM_H, NULL, false);
+    te += ITEM_H;
+  }
+}
