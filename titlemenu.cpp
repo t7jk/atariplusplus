@@ -22,6 +22,7 @@
 #include "menuseparatoritem.hpp"
 #include "menuselectionitem.hpp"
 #include "filerequester.hpp"
+#include "atarionline.hpp"
 #include "display.hpp"
 #include "timer.hpp"
 #include "exceptions.hpp"
@@ -34,6 +35,7 @@ TitleMenu::TitleMenu(class Machine *mach)
     Display(NULL), RootMenu(NULL), 
     BufferPort(new class BufferPort),
     Requester(new class FileRequester(mach)),
+    AtariOnlineReq(new class AtariOnlineRequester(mach)),
     LastPrefsName(new char[14]), LastStateName(new char[14])
 {
   strcpy(LastPrefsName,".atari++.conf");
@@ -47,6 +49,7 @@ TitleMenu::~TitleMenu(void)
   RemoveMenu(); // Remove the menu. This also kills the root menu
   delete BufferPort;
   delete Requester;
+  delete AtariOnlineReq;
   delete[] LastPrefsName;
   delete[] LastStateName;
 }
@@ -222,7 +225,9 @@ void TitleMenu::CollectTopics(void)
   new class MenuActionItem(projectmenu,"Enter Monitor",TA_Monitor);
   new class MenuSeparatorItem(projectmenu);
 #endif
-  new class MenuActionItem(projectmenu,"Exit",TA_Quit);  
+  new class MenuSeparatorItem(projectmenu);
+  new class MenuActionItem(projectmenu,"AtariOnline...",TA_AtariOnline);
+  new class MenuActionItem(projectmenu,"Exit",TA_Quit);
   //
   // Then forward the request to the option collector
   // doing its job fetching the remaining options from
@@ -613,6 +618,16 @@ void TitleMenu::EnterMenu(void)
       case TA_SaveState:
 	// Save machine state to a file.
 	SaveState();
+	quit = true;
+	break;
+      case TA_AtariOnline:
+	RemoveMenu();
+	if (AtariOnlineReq->Request()) {
+	  if (Machine->DriveOf(0)) {
+	    Machine->DriveOf(0)->MountImage(AtariOnlineReq->SelectedItem());
+	  }
+	  Machine->ColdStart();
+	}
 	quit = true;
 	break;
       default:

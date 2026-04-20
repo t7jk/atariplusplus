@@ -27,6 +27,7 @@ class BufferPort;
 class AtariDisplay;
 class Gadget;
 class FileRequester;
+class AtariOnlineRequester;
 ///
 
 /// Class TitleMenu
@@ -49,7 +50,8 @@ public:
     TA_Menu,       // enter the full menu
     TA_Monitor,    // enter the built-in monitor
     TA_Exit,       // leave the menu
-    TA_Quit        // leave the emulator
+    TA_Quit,       // leave the emulator
+    TA_AtariOnline // browse atarionline.pl and mount a disk
   };
 private:
   //
@@ -112,6 +114,9 @@ private:
   //
   // Pointer to a file requester for general purpose.
   class FileRequester *Requester;
+  //
+  // Pointer to the AtariOnline browser requester.
+  class AtariOnlineRequester *AtariOnlineReq;
   //
   // The last used preferences file name.
   char                *LastPrefsName;
