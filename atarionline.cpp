@@ -376,6 +376,7 @@ bool AtariOnlineRequester::EnsureDownloadDir(void)
   mkdir(base, 0755);
 
   snprintf(DownloadDir, sizeof(DownloadDir), "%s/.atari++/downloads", home);
+  SanitizeFilename(DownloadDir);
   if (mkdir(DownloadDir, 0755) != 0) {
     struct stat st;
     if (stat(DownloadDir, &st) != 0 || !S_ISDIR(st.st_mode))
